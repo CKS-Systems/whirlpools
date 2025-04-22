@@ -3,52 +3,76 @@
 #[cfg(feature = "wasm")]
 use orca_whirlpools_macros::wasm_expose;
 
-pub type CoreError = &'static str;
+use core::fmt;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum CoreError {
+    Static(&'static str),
+    InvalidTimestamp { current: u64, expected_min: u64 },
+}
+
+impl fmt::Display for CoreError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CoreError::Static(msg) => write!(f, "{}", msg),
+            CoreError::InvalidTimestamp { current, expected_min } => {
+                write!(f, "Invalid timestamp: current_timestamp ({}) must be >= max(last_reference_update_timestamp, last_major_swap_timestamp) ({})", 
+                       current, expected_min)
+            }
+        }
+    }
+}
+
+impl From<&'static str> for CoreError {
+    fn from(s: &'static str) -> Self {
+        CoreError::Static(s)
+    }
+}
 
 #[cfg_attr(feature = "wasm", wasm_expose)]
-pub const TICK_ARRAY_NOT_EVENLY_SPACED: CoreError = "Tick array not evenly spaced";
+pub const TICK_ARRAY_NOT_EVENLY_SPACED: &'static str = "Tick array not evenly spaced";
 
 #[cfg_attr(feature = "wasm", wasm_expose)]
-pub const TICK_INDEX_OUT_OF_BOUNDS: CoreError = "Tick index out of bounds";
+pub const TICK_INDEX_OUT_OF_BOUNDS: &'static str = "Tick index out of bounds";
 
 #[cfg_attr(feature = "wasm", wasm_expose)]
-pub const INVALID_TICK_INDEX: CoreError = "Invalid tick index";
+pub const INVALID_TICK_INDEX: &'static str = "Invalid tick index";
 
 #[cfg_attr(feature = "wasm", wasm_expose)]
-pub const ARITHMETIC_OVERFLOW: CoreError = "Arithmetic over- or underflow";
+pub const ARITHMETIC_OVERFLOW: &'static str = "Arithmetic over- or underflow";
 
 #[cfg_attr(feature = "wasm", wasm_expose)]
-pub const AMOUNT_EXCEEDS_MAX_U64: CoreError = "Amount exceeds max u64";
+pub const AMOUNT_EXCEEDS_MAX_U64: &'static str = "Amount exceeds max u64";
 
 #[cfg_attr(feature = "wasm", wasm_expose)]
-pub const SQRT_PRICE_OUT_OF_BOUNDS: CoreError = "Sqrt price out of bounds";
+pub const SQRT_PRICE_OUT_OF_BOUNDS: &'static str = "Sqrt price out of bounds";
 
 #[cfg_attr(feature = "wasm", wasm_expose)]
-pub const TICK_SEQUENCE_EMPTY: CoreError = "Tick sequence empty";
+pub const TICK_SEQUENCE_EMPTY: &'static str = "Tick sequence empty";
 
 #[cfg_attr(feature = "wasm", wasm_expose)]
-pub const SQRT_PRICE_LIMIT_OUT_OF_BOUNDS: CoreError = "Sqrt price limit out of bounds";
+pub const SQRT_PRICE_LIMIT_OUT_OF_BOUNDS: &'static str = "Sqrt price limit out of bounds";
 
 #[cfg_attr(feature = "wasm", wasm_expose)]
-pub const INVALID_SQRT_PRICE_LIMIT_DIRECTION: CoreError = "Invalid sqrt price limit direction";
+pub const INVALID_SQRT_PRICE_LIMIT_DIRECTION: &'static str = "Invalid sqrt price limit direction";
 
 #[cfg_attr(feature = "wasm", wasm_expose)]
-pub const ZERO_TRADABLE_AMOUNT: CoreError = "Zero tradable amount";
+pub const ZERO_TRADABLE_AMOUNT: &'static str = "Zero tradable amount";
 
 #[cfg_attr(feature = "wasm", wasm_expose)]
-pub const INVALID_TIMESTAMP: CoreError = "Invalid timestamp";
+pub const INVALID_TIMESTAMP: &'static str = "Invalid timestamp: current_timestamp must be >= max(last_reference_update_timestamp, last_major_swap_timestamp)";
 
 #[cfg_attr(feature = "wasm", wasm_expose)]
-pub const INVALID_TRANSFER_FEE: CoreError = "Invalid transfer fee";
+pub const INVALID_TRANSFER_FEE: &'static str = "Invalid transfer fee";
 
 #[cfg_attr(feature = "wasm", wasm_expose)]
-pub const INVALID_SLIPPAGE_TOLERANCE: CoreError = "Invalid slippage tolerance";
+pub const INVALID_SLIPPAGE_TOLERANCE: &'static str = "Invalid slippage tolerance";
 
 #[cfg_attr(feature = "wasm", wasm_expose)]
-pub const TICK_INDEX_NOT_IN_ARRAY: CoreError = "Tick index not in array";
+pub const TICK_INDEX_NOT_IN_ARRAY: &'static str = "Tick index not in array";
 
 #[cfg_attr(feature = "wasm", wasm_expose)]
-pub const INVALID_TICK_ARRAY_SEQUENCE: CoreError = "Invalid tick array sequence";
+pub const INVALID_TICK_ARRAY_SEQUENCE: &'static str = "Invalid tick array sequence";
 
 #[cfg_attr(feature = "wasm", wasm_expose)]
-pub const INVALID_ADAPTIVE_FEE_INFO: CoreError = "Invalid adaptive fee info";
+pub const INVALID_ADAPTIVE_FEE_INFO: &'static str = "Invalid adaptive fee info";

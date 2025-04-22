@@ -30,13 +30,13 @@ pub fn try_get_amount_delta_a(
     let sqrt_price_diff = sqrt_price_upper - sqrt_price_lower;
     let numerator: U256 = <U256>::from(liquidity)
         .checked_mul(sqrt_price_diff.into())
-        .ok_or(ARITHMETIC_OVERFLOW)?
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?
         .checked_shl(64)
-        .ok_or(ARITHMETIC_OVERFLOW)?;
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?;
 
     let denominator: U256 = <U256>::from(sqrt_price_lower)
         .checked_mul(sqrt_price_upper.into())
-        .ok_or(ARITHMETIC_OVERFLOW)?;
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?;
 
     let quotient = numerator / denominator;
     let remainder = numerator % denominator;
@@ -47,7 +47,7 @@ pub fn try_get_amount_delta_a(
         quotient
     };
 
-    result.try_into().map_err(|_| AMOUNT_EXCEEDS_MAX_U64)
+    result.try_into().map_err(|_| CoreError::from(AMOUNT_EXCEEDS_MAX_U64))
 }
 
 /// Calculate the amount B delta between two sqrt_prices
@@ -73,14 +73,14 @@ pub fn try_get_amount_delta_b(
 
     let product: U256 = <U256>::from(liquidity)
         .checked_mul(sqrt_price_diff.into())
-        .ok_or(ARITHMETIC_OVERFLOW)?;
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?;
     let quotient: U256 = product >> 64;
 
     let should_round = round_up && product & <U256>::from(u64::MAX) > 0;
 
     let result = if should_round { quotient + 1 } else { quotient };
 
-    result.try_into().map_err(|_| AMOUNT_EXCEEDS_MAX_U64)
+    result.try_into().map_err(|_| CoreError::from(AMOUNT_EXCEEDS_MAX_U64))
 }
 
 /// Calculate the next square root price
@@ -108,16 +108,16 @@ pub fn try_get_next_sqrt_price_from_a(
 
     let p = <U256>::from(current_sqrt_price)
         .checked_mul(amount.into())
-        .ok_or(ARITHMETIC_OVERFLOW)?;
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?;
     let numerator = <U256>::from(current_liquidity)
         .checked_mul(current_sqrt_price.into())
-        .ok_or(ARITHMETIC_OVERFLOW)?
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?
         .checked_shl(64)
-        .ok_or(ARITHMETIC_OVERFLOW)?;
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?;
 
     let current_liquidity_shifted = <U256>::from(current_liquidity)
         .checked_shl(64)
-        .ok_or(ARITHMETIC_OVERFLOW)?;
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?;
     let denominator = if specified_input {
         current_liquidity_shifted + p
     } else {
@@ -134,7 +134,7 @@ pub fn try_get_next_sqrt_price_from_a(
     };
 
     if !(MIN_SQRT_PRICE..=MAX_SQRT_PRICE).contains(&result) {
-        return Err(SQRT_PRICE_OUT_OF_BOUNDS);
+        return Err(CoreError::from(SQRT_PRICE_OUT_OF_BOUNDS));
     }
 
     Ok(result.as_u128().into())
@@ -164,7 +164,7 @@ pub fn try_get_next_sqrt_price_from_b(
     let current_liquidity = <U256>::from(current_liquidity);
     let amount_shifted = <U256>::from(amount)
         .checked_shl(64)
-        .ok_or(ARITHMETIC_OVERFLOW)?;
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?;
 
     let quotient: U256 = amount_shifted / current_liquidity;
     let remainder: U256 = amount_shifted % current_liquidity;
@@ -182,7 +182,7 @@ pub fn try_get_next_sqrt_price_from_b(
     };
 
     if !(MIN_SQRT_PRICE..=MAX_SQRT_PRICE).contains(&result) {
-        return Err(SQRT_PRICE_OUT_OF_BOUNDS);
+        return Err(CoreError::from(SQRT_PRICE_OUT_OF_BOUNDS));
     }
 
     Ok(result.as_u128().into())
@@ -201,18 +201,18 @@ pub fn try_get_next_sqrt_price_from_b(
 #[cfg_attr(feature = "wasm", wasm_expose)]
 pub fn try_apply_transfer_fee(amount: u64, transfer_fee: TransferFee) -> Result<u64, CoreError> {
     if transfer_fee.fee_bps > BPS_DENOMINATOR {
-        return Err(INVALID_TRANSFER_FEE);
+        return Err(CoreError::from(INVALID_TRANSFER_FEE));
     }
     if transfer_fee.fee_bps == 0 || amount == 0 {
         return Ok(amount);
     }
     let numerator = <u128>::from(amount)
         .checked_mul(transfer_fee.fee_bps.into())
-        .ok_or(ARITHMETIC_OVERFLOW)?;
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?;
     let raw_fee: u64 = numerator
         .div_ceil(BPS_DENOMINATOR.into())
         .try_into()
-        .map_err(|_| AMOUNT_EXCEEDS_MAX_U64)?;
+        .map_err(|_| CoreError::from(AMOUNT_EXCEEDS_MAX_U64))?;
     let fee_amount = raw_fee.min(transfer_fee.max_fee);
     Ok(amount - fee_amount)
 }
@@ -233,7 +233,7 @@ pub fn try_reverse_apply_transfer_fee(
     transfer_fee: TransferFee,
 ) -> Result<u64, CoreError> {
     if transfer_fee.fee_bps > BPS_DENOMINATOR {
-        Err(INVALID_TRANSFER_FEE)
+        Err(CoreError::from(INVALID_TRANSFER_FEE))
     } else if transfer_fee.fee_bps == 0 {
         Ok(amount)
     } else if amount == 0 {
@@ -241,24 +241,24 @@ pub fn try_reverse_apply_transfer_fee(
     } else if transfer_fee.fee_bps == BPS_DENOMINATOR {
         amount
             .checked_add(transfer_fee.max_fee)
-            .ok_or(AMOUNT_EXCEEDS_MAX_U64)
+            .ok_or(CoreError::from(AMOUNT_EXCEEDS_MAX_U64))
     } else {
         let numerator = <u128>::from(amount)
             .checked_mul(BPS_DENOMINATOR.into())
-            .ok_or(ARITHMETIC_OVERFLOW)?;
+            .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?;
         let denominator = <u128>::from(BPS_DENOMINATOR) - <u128>::from(transfer_fee.fee_bps);
         let raw_pre_fee_amount = numerator.div_ceil(denominator);
         let fee_amount = raw_pre_fee_amount
             .checked_sub(amount.into())
-            .ok_or(AMOUNT_EXCEEDS_MAX_U64)?;
+            .ok_or(CoreError::from(AMOUNT_EXCEEDS_MAX_U64))?;
         if fee_amount >= transfer_fee.max_fee as u128 {
             amount
                 .checked_add(transfer_fee.max_fee)
-                .ok_or(AMOUNT_EXCEEDS_MAX_U64)
+                .ok_or(CoreError::from(AMOUNT_EXCEEDS_MAX_U64))
         } else {
             raw_pre_fee_amount
                 .try_into()
-                .map_err(|_| AMOUNT_EXCEEDS_MAX_U64)
+                .map_err(|_| CoreError::from(AMOUNT_EXCEEDS_MAX_U64))
         }
     }
 }
@@ -278,7 +278,7 @@ pub fn try_get_max_amount_with_slippage_tolerance(
     slippage_tolerance_bps: u16,
 ) -> Result<u64, CoreError> {
     if slippage_tolerance_bps > BPS_DENOMINATOR {
-        return Err(INVALID_SLIPPAGE_TOLERANCE);
+        return Err(CoreError::from(INVALID_SLIPPAGE_TOLERANCE));
     }
     let product = <u128>::from(BPS_DENOMINATOR) + <u128>::from(slippage_tolerance_bps);
     let result = try_mul_div(amount, product, BPS_DENOMINATOR.into(), true)?;
@@ -300,7 +300,7 @@ pub fn try_get_min_amount_with_slippage_tolerance(
     slippage_tolerance_bps: u16,
 ) -> Result<u64, CoreError> {
     if slippage_tolerance_bps > BPS_DENOMINATOR {
-        return Err(INVALID_SLIPPAGE_TOLERANCE);
+        return Err(CoreError::from(INVALID_SLIPPAGE_TOLERANCE));
     }
     let product = <u128>::from(BPS_DENOMINATOR) - <u128>::from(slippage_tolerance_bps);
     let result = try_mul_div(amount, product, BPS_DENOMINATOR.into(), false)?;
@@ -364,7 +364,7 @@ fn try_mul_div(
         quotient
     };
 
-    result.try_into().map_err(|_| AMOUNT_EXCEEDS_MAX_U64)
+    result.try_into().map_err(|_| CoreError::from(AMOUNT_EXCEEDS_MAX_U64))
 }
 
 fn order_prices(a: u128, b: u128) -> (u128, u128) {
@@ -470,11 +470,11 @@ mod tests {
         );
         assert_eq!(
             try_apply_transfer_fee(10000, TransferFee::new(10001)),
-            Err(INVALID_TRANSFER_FEE)
+            Err(CoreError::from(INVALID_TRANSFER_FEE))
         );
         assert_eq!(
             try_apply_transfer_fee(10000, TransferFee::new(u16::MAX)),
-            Err(INVALID_TRANSFER_FEE)
+            Err(CoreError::from(INVALID_TRANSFER_FEE))
         );
     }
 
@@ -510,11 +510,11 @@ mod tests {
         );
         assert_eq!(
             try_apply_transfer_fee(10000, TransferFee::new_with_max(10001, 500)),
-            Err(INVALID_TRANSFER_FEE)
+            Err(CoreError::from(INVALID_TRANSFER_FEE))
         );
         assert_eq!(
             try_apply_transfer_fee(10000, TransferFee::new_with_max(u16::MAX, 500)),
-            Err(INVALID_TRANSFER_FEE)
+            Err(CoreError::from(INVALID_TRANSFER_FEE))
         );
     }
 
@@ -538,7 +538,7 @@ mod tests {
         );
         assert_eq!(
             try_reverse_apply_transfer_fee(5000, TransferFee::new(10000)),
-            Err(AMOUNT_EXCEEDS_MAX_U64)
+            Err(CoreError::from(AMOUNT_EXCEEDS_MAX_U64))
         );
         assert_eq!(
             try_reverse_apply_transfer_fee(0, TransferFee::new(10000)),
@@ -546,15 +546,15 @@ mod tests {
         );
         assert_eq!(
             try_reverse_apply_transfer_fee(u64::MAX, TransferFee::new(10000)),
-            Err(AMOUNT_EXCEEDS_MAX_U64)
+            Err(CoreError::from(AMOUNT_EXCEEDS_MAX_U64))
         );
         assert_eq!(
             try_reverse_apply_transfer_fee(10000, TransferFee::new(10001)),
-            Err(INVALID_TRANSFER_FEE)
+            Err(CoreError::from(INVALID_TRANSFER_FEE))
         );
         assert_eq!(
             try_reverse_apply_transfer_fee(10000, TransferFee::new(u16::MAX)),
-            Err(INVALID_TRANSFER_FEE)
+            Err(CoreError::from(INVALID_TRANSFER_FEE))
         );
     }
 
@@ -590,15 +590,15 @@ mod tests {
         );
         assert_eq!(
             try_reverse_apply_transfer_fee(u64::MAX, TransferFee::new_with_max(10000, 500)),
-            Err(AMOUNT_EXCEEDS_MAX_U64)
+            Err(CoreError::from(AMOUNT_EXCEEDS_MAX_U64))
         );
         assert_eq!(
             try_reverse_apply_transfer_fee(10000, TransferFee::new_with_max(10001, 500)),
-            Err(INVALID_TRANSFER_FEE)
+            Err(CoreError::from(INVALID_TRANSFER_FEE))
         );
         assert_eq!(
             try_reverse_apply_transfer_fee(10000, TransferFee::new_with_max(u16::MAX, 500)),
-            Err(INVALID_TRANSFER_FEE)
+            Err(CoreError::from(INVALID_TRANSFER_FEE))
         );
     }
 
@@ -623,15 +623,15 @@ mod tests {
         );
         assert_eq!(
             try_get_max_amount_with_slippage_tolerance(u64::MAX, 10000),
-            Err(AMOUNT_EXCEEDS_MAX_U64)
+            Err(CoreError::from(AMOUNT_EXCEEDS_MAX_U64))
         );
         assert_eq!(
             try_get_max_amount_with_slippage_tolerance(10000, 10001),
-            Err(INVALID_SLIPPAGE_TOLERANCE)
+            Err(CoreError::from(INVALID_SLIPPAGE_TOLERANCE))
         );
         assert_eq!(
             try_get_max_amount_with_slippage_tolerance(10000, u16::MAX),
-            Err(INVALID_SLIPPAGE_TOLERANCE)
+            Err(CoreError::from(INVALID_SLIPPAGE_TOLERANCE))
         );
     }
 
@@ -664,11 +664,11 @@ mod tests {
         );
         assert_eq!(
             try_get_min_amount_with_slippage_tolerance(10000, 10001),
-            Err(INVALID_SLIPPAGE_TOLERANCE)
+            Err(CoreError::from(INVALID_SLIPPAGE_TOLERANCE))
         );
         assert_eq!(
             try_get_min_amount_with_slippage_tolerance(10000, u16::MAX),
-            Err(INVALID_SLIPPAGE_TOLERANCE)
+            Err(CoreError::from(INVALID_SLIPPAGE_TOLERANCE))
         );
     }
 
@@ -700,11 +700,11 @@ mod tests {
         );
         assert_eq!(
             try_reverse_apply_swap_fee(u64::MAX, 1000),
-            Err(AMOUNT_EXCEEDS_MAX_U64)
+            Err(CoreError::from(AMOUNT_EXCEEDS_MAX_U64))
         );
         assert_eq!(
             try_reverse_apply_swap_fee(u64::MAX, 10000),
-            Err(AMOUNT_EXCEEDS_MAX_U64)
+            Err(CoreError::from(AMOUNT_EXCEEDS_MAX_U64))
         );
     }
 }

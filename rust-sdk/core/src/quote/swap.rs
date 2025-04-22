@@ -216,17 +216,17 @@ pub fn compute_swap<const SIZE: usize>(
     };
 
     if !(MIN_SQRT_PRICE..=MAX_SQRT_PRICE).contains(&sqrt_price_limit) {
-        return Err(SQRT_PRICE_LIMIT_OUT_OF_BOUNDS);
+        return Err(CoreError::from(SQRT_PRICE_LIMIT_OUT_OF_BOUNDS));
     }
 
     if a_to_b && sqrt_price_limit >= whirlpool.sqrt_price
         || !a_to_b && sqrt_price_limit <= whirlpool.sqrt_price
     {
-        return Err(INVALID_SQRT_PRICE_LIMIT_DIRECTION);
+        return Err(CoreError::from(INVALID_SQRT_PRICE_LIMIT_DIRECTION));
     }
 
     if token_amount == 0 {
-        return Err(ZERO_TRADABLE_AMOUNT);
+        return Err(CoreError::from(ZERO_TRADABLE_AMOUNT));
     }
 
     let mut amount_remaining = token_amount;
@@ -241,7 +241,7 @@ pub fn compute_swap<const SIZE: usize>(
     let mut applied_fee_rate_max: Option<u32> = None;
 
     if whirlpool.is_initialized_with_adaptive_fee() != adaptive_fee_info.is_some() {
-        return Err(INVALID_ADAPTIVE_FEE_INFO);
+        return Err(CoreError::from(INVALID_ADAPTIVE_FEE_INFO));
     }
 
     let mut fee_rate_manager = FeeRateManager::new(
@@ -298,21 +298,21 @@ pub fn compute_swap<const SIZE: usize>(
             if specified_input {
                 amount_remaining = amount_remaining
                     .checked_sub(step_quote.amount_in)
-                    .ok_or(ARITHMETIC_OVERFLOW)?
+                    .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?
                     .checked_sub(step_quote.fee_amount)
-                    .ok_or(ARITHMETIC_OVERFLOW)?;
+                    .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?;
                 amount_calculated = amount_calculated
                     .checked_add(step_quote.amount_out)
-                    .ok_or(ARITHMETIC_OVERFLOW)?;
+                    .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?;
             } else {
                 amount_remaining = amount_remaining
                     .checked_sub(step_quote.amount_out)
-                    .ok_or(ARITHMETIC_OVERFLOW)?;
+                    .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?;
                 amount_calculated = amount_calculated
                     .checked_add(step_quote.amount_in)
-                    .ok_or(ARITHMETIC_OVERFLOW)?
+                    .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?
                     .checked_add(step_quote.fee_amount)
-                    .ok_or(ARITHMETIC_OVERFLOW)?;
+                    .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?;
             }
 
             if step_quote.next_sqrt_price == next_tick_sqrt_price {
@@ -376,7 +376,7 @@ pub fn compute_swap<const SIZE: usize>(
 
 // Private functions
 
-fn get_next_liquidity(
+pub fn get_next_liquidity(
     current_liquidity: u128,
     next_tick: Option<&TickFacade>,
     a_to_b: bool,
@@ -396,14 +396,14 @@ fn get_next_liquidity(
     }
 }
 
-struct SwapStepQuote {
-    amount_in: u64,
-    amount_out: u64,
-    next_sqrt_price: u128,
-    fee_amount: u64,
+pub struct SwapStepQuote {
+    pub amount_in: u64,
+    pub amount_out: u64,
+    pub next_sqrt_price: u128,
+    pub fee_amount: u64,
 }
 
-fn compute_swap_step(
+pub fn compute_swap_step(
     amount_remaining: u64,
     fee_rate: u32,
     current_liquidity: u128,
@@ -413,15 +413,19 @@ fn compute_swap_step(
     specified_input: bool,
 ) -> Result<SwapStepQuote, CoreError> {
     // Any error that is not AMOUNT_EXCEEDS_MAX_U64 is not recoverable
-    let initial_amount_fixed_delta = try_get_amount_fixed_delta(
+    let initial_amount_fixed_delta_result = try_get_amount_fixed_delta(
         current_sqrt_price,
         target_sqrt_price,
         current_liquidity,
         a_to_b,
         specified_input,
     );
-    let is_initial_amount_fixed_overflow =
-        initial_amount_fixed_delta == Err(AMOUNT_EXCEEDS_MAX_U64);
+    
+    let (is_initial_amount_fixed_overflow, initial_amount_fixed_delta) = match &initial_amount_fixed_delta_result {
+        Err(e) if *e == CoreError::from(AMOUNT_EXCEEDS_MAX_U64) => (true, None),
+        Ok(value) => (false, Some(*value)),
+        Err(e) => return Err(e.clone()),
+    };
 
     let amount_calculated = if specified_input {
         try_apply_swap_fee(amount_remaining.into(), fee_rate)?
@@ -430,7 +434,7 @@ fn compute_swap_step(
     };
 
     let next_sqrt_price =
-        if !is_initial_amount_fixed_overflow && initial_amount_fixed_delta? <= amount_calculated {
+        if !is_initial_amount_fixed_overflow && initial_amount_fixed_delta.unwrap() <= amount_calculated {
             target_sqrt_price
         } else {
             try_get_next_sqrt_price(
@@ -462,7 +466,7 @@ fn compute_swap_step(
             specified_input,
         )?
     } else {
-        initial_amount_fixed_delta?
+        initial_amount_fixed_delta.unwrap()
     };
 
     let (amount_in, mut amount_out) = if specified_input {
@@ -806,7 +810,7 @@ mod tests {
             None,
         );
         assert_eq!(result_3428.token_in, 3428);
-        assert!(matches!(result_3429, Err(INVALID_TICK_ARRAY_SEQUENCE)));
+        assert!(matches!(result_3429, Err(e) if e == &CoreError::from(INVALID_TICK_ARRAY_SEQUENCE)));
     }
 
     mod adaptive_fee {

@@ -361,6 +361,18 @@ impl<'info> OracleAccessor<'info> {
         })
     }
 
+    pub fn new_from_whirlpool_key(
+        whirlpool: Pubkey,
+        oracle_account_info: AccountInfo<'info>,
+    ) -> Result<Self> {
+        let oracle_account_initialized =
+            Self::is_oracle_account_initialized(&oracle_account_info, whirlpool)?;
+        Ok(Self {
+            oracle_account_info,
+            oracle_account_initialized,
+        })
+    }
+
     pub fn is_trade_enabled(&self, current_timestamp: u64) -> Result<bool> {
         if !self.oracle_account_initialized {
             return Ok(true);

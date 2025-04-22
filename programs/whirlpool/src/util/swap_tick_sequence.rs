@@ -21,7 +21,7 @@ impl<'info> SwapTickSequence<'info> {
         )
     }
 
-    pub(crate) fn new_with_proxy(
+    pub fn new_with_proxy(
         ta0: ProxiedTickArray<'info>,
         ta1: Option<ProxiedTickArray<'info>>,
         ta2: Option<ProxiedTickArray<'info>>,

@@ -449,11 +449,11 @@ fn try_get_liquidity_from_a(
     let sqrt_price_diff = sqrt_price_upper - sqrt_price_lower;
     let mul: U256 = <U256>::from(token_delta_a)
         .checked_mul(sqrt_price_lower.into())
-        .ok_or(ARITHMETIC_OVERFLOW)?
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?
         .checked_mul(sqrt_price_upper.into())
-        .ok_or(ARITHMETIC_OVERFLOW)?;
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?;
     let result: U256 = (mul / sqrt_price_diff) >> 64;
-    result.try_into().map_err(|_| AMOUNT_EXCEEDS_MAX_U64)
+    result.try_into().map_err(|_| CoreError::from(AMOUNT_EXCEEDS_MAX_U64))
 }
 
 fn try_get_token_a_from_liquidity(
@@ -465,20 +465,20 @@ fn try_get_token_a_from_liquidity(
     let sqrt_price_diff = sqrt_price_upper - sqrt_price_lower;
     let numerator: U256 = <U256>::from(liquidity_delta)
         .checked_mul(sqrt_price_diff.into())
-        .ok_or(ARITHMETIC_OVERFLOW)?
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?
         .checked_shl(64)
-        .ok_or(ARITHMETIC_OVERFLOW)?;
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?;
     let denominator = <U256>::from(sqrt_price_upper)
         .checked_mul(<U256>::from(sqrt_price_lower))
-        .ok_or(ARITHMETIC_OVERFLOW)?;
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?;
     let quotient = numerator / denominator;
     let remainder = numerator % denominator;
     if round_up && remainder != 0 {
         (quotient + 1)
             .try_into()
-            .map_err(|_| AMOUNT_EXCEEDS_MAX_U64)
+            .map_err(|_| CoreError::from(AMOUNT_EXCEEDS_MAX_U64))
     } else {
-        quotient.try_into().map_err(|_| AMOUNT_EXCEEDS_MAX_U64)
+        quotient.try_into().map_err(|_| CoreError::from(AMOUNT_EXCEEDS_MAX_U64))
     }
 }
 
@@ -489,10 +489,10 @@ fn try_get_liquidity_from_b(
 ) -> Result<u128, CoreError> {
     let numerator: U256 = <U256>::from(token_delta_b)
         .checked_shl(64)
-        .ok_or(ARITHMETIC_OVERFLOW)?;
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?;
     let sqrt_price_diff = sqrt_price_upper - sqrt_price_lower;
     let result = numerator / <U256>::from(sqrt_price_diff);
-    result.try_into().map_err(|_| AMOUNT_EXCEEDS_MAX_U64)
+    result.try_into().map_err(|_| CoreError::from(AMOUNT_EXCEEDS_MAX_U64))
 }
 
 fn try_get_token_b_from_liquidity(
@@ -504,12 +504,12 @@ fn try_get_token_b_from_liquidity(
     let sqrt_price_diff = sqrt_price_upper - sqrt_price_lower;
     let mul: U256 = <U256>::from(liquidity_delta)
         .checked_mul(sqrt_price_diff.into())
-        .ok_or(ARITHMETIC_OVERFLOW)?;
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?;
     let result: U256 = mul >> 64;
     if round_up && mul & <U256>::from(u64::MAX) > 0 {
-        (result + 1).try_into().map_err(|_| AMOUNT_EXCEEDS_MAX_U64)
+        (result + 1).try_into().map_err(|_| CoreError::from(AMOUNT_EXCEEDS_MAX_U64))
     } else {
-        result.try_into().map_err(|_| AMOUNT_EXCEEDS_MAX_U64)
+        result.try_into().map_err(|_| CoreError::from(AMOUNT_EXCEEDS_MAX_U64))
     }
 }
 
