@@ -15,7 +15,7 @@ use crate::{
 
 // In the case of an uninitialized TickArray, ZeroedTickArray is used to substitute TickArray behavior.
 // Since all Tick are not initialized, it can be substituted by returning Tick::default().
-pub(crate) enum ProxiedTickArray<'a> {
+pub enum ProxiedTickArray<'a> {
     Initialized(RefMut<'a, TickArray>),
     Uninitialized(ZeroedTickArray),
 }
@@ -313,7 +313,41 @@ fn peek_tick_array(account_info: AccountInfo<'_>) -> Result<TickArrayAccount<'_>
     })
 }
 
-fn get_start_tick_indexes(whirlpool: &Account<Whirlpool>, a_to_b: bool) -> Vec<i32> {
+pub fn get_start_tick_indexes_for_whirlpool(whirlpool: &Whirlpool, a_to_b: bool) -> Vec<i32> {
+    let tick_current_index = whirlpool.tick_current_index;
+    let tick_spacing_u16 = whirlpool.tick_spacing;
+    let tick_spacing_i32 = whirlpool.tick_spacing as i32;
+    let ticks_in_array = TICK_ARRAY_SIZE * tick_spacing_i32;
+
+    let start_tick_index_base = floor_division(tick_current_index, ticks_in_array) * ticks_in_array;
+    let offset = if a_to_b {
+        [0, -1, -2]
+    } else {
+        let shifted =
+            tick_current_index + tick_spacing_i32 >= start_tick_index_base + ticks_in_array;
+        if shifted {
+            [1, 2, 3]
+        } else {
+            [0, 1, 2]
+        }
+    };
+
+    let start_tick_indexes = offset
+        .iter()
+        .filter_map(|&o| {
+            let start_tick_index = start_tick_index_base + o * ticks_in_array;
+            if Tick::check_is_valid_start_tick(start_tick_index, tick_spacing_u16) {
+                Some(start_tick_index)
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<i32>>();
+
+    start_tick_indexes
+}
+
+pub fn get_start_tick_indexes(whirlpool: &Account<Whirlpool>, a_to_b: bool) -> Vec<i32> {
     let tick_current_index = whirlpool.tick_current_index;
     let tick_spacing_u16 = whirlpool.tick_spacing;
     let tick_spacing_i32 = whirlpool.tick_spacing as i32;
