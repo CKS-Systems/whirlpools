@@ -9,3 +9,10 @@ exclude = [
     "docs",
     "examples"
 ]
+
+# ahash 0.8.5 uses a build script that crashes the build when checking
+# for the stdsimd feature.
+[patch.crates-io.ahash]
+version = "0.8.5"
+git = "https://github.com/mschneider/ahash"
+rev = "558c87f5586ed223e93e6d73dcb0a1d93be551b4"
