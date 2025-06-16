@@ -409,7 +409,10 @@ impl AdaptiveFeeVariablesFacade {
             .last_reference_update_timestamp
             .max(self.last_major_swap_timestamp);
         if current_timestamp < max_timestamp {
-            return Err(INVALID_TIMESTAMP);
+            return Err(CoreError::InvalidTimestamp { 
+                current: current_timestamp, 
+                expected_min: max_timestamp 
+            });
         }
 
         let reference_age = current_timestamp - self.last_reference_update_timestamp;
