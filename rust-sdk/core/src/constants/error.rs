@@ -5,7 +5,7 @@ use orca_whirlpools_macros::wasm_expose;
 
 use core::fmt;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum CoreError {
     Static(&'static str),
     InvalidTimestamp { current: u64, expected_min: u64 },

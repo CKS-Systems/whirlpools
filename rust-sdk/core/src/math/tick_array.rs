@@ -24,7 +24,7 @@ impl<const SIZE: usize> TickArraySequence<SIZE> {
         tick_arrays.sort_by_key(start_tick_index);
 
         if tick_arrays.is_empty() || tick_arrays[0].is_none() {
-            return Err(TICK_SEQUENCE_EMPTY);
+            return Err(CoreError::from(TICK_SEQUENCE_EMPTY));
         }
 
         let required_tick_array_spacing = TICK_ARRAY_SIZE as i32 * tick_spacing as i32;
@@ -34,7 +34,7 @@ impl<const SIZE: usize> TickArraySequence<SIZE> {
             if next_start_tick_index != <i32>::MAX
                 && next_start_tick_index - current_start_tick_index != required_tick_array_spacing
             {
-                return Err(TICK_ARRAY_NOT_EVENLY_SPACED);
+                return Err(CoreError::from(TICK_ARRAY_NOT_EVENLY_SPACED));
             }
         }
 
@@ -64,10 +64,10 @@ impl<const SIZE: usize> TickArraySequence<SIZE> {
 
     pub fn tick(&self, tick_index: i32) -> Result<&TickFacade, CoreError> {
         if (tick_index < self.start_index()) || (tick_index > self.end_index()) {
-            return Err(TICK_INDEX_OUT_OF_BOUNDS);
+            return Err(CoreError::from(TICK_INDEX_OUT_OF_BOUNDS));
         }
         if (tick_index % self.tick_spacing as i32) != 0 {
-            return Err(INVALID_TICK_INDEX);
+            return Err(CoreError::from(INVALID_TICK_INDEX));
         }
         let first_index = start_tick_index(&self.tick_arrays[0]);
         let tick_array_index = ((tick_index - first_index)
@@ -85,7 +85,7 @@ impl<const SIZE: usize> TickArraySequence<SIZE> {
     ) -> Result<(Option<&TickFacade>, i32), CoreError> {
         let array_end_index = self.end_index();
         if tick_index >= array_end_index {
-            return Err(INVALID_TICK_ARRAY_SEQUENCE);
+            return Err(CoreError::from(INVALID_TICK_ARRAY_SEQUENCE));
         }
         let mut next_index = tick_index;
         loop {
@@ -107,7 +107,7 @@ impl<const SIZE: usize> TickArraySequence<SIZE> {
     ) -> Result<(Option<&TickFacade>, i32), CoreError> {
         let array_start_index = self.start_index();
         if tick_index < array_start_index {
-            return Err(INVALID_TICK_ARRAY_SEQUENCE);
+            return Err(CoreError::from(INVALID_TICK_ARRAY_SEQUENCE));
         }
         let mut prev_index =
             get_initializable_tick_index(tick_index, self.tick_spacing, Some(false));
@@ -257,19 +257,19 @@ mod tests {
         let out_out_bounds_lower = sequence.tick(-1409);
         assert!(matches!(
             out_out_bounds_lower,
-            Err(TICK_INDEX_OUT_OF_BOUNDS)
+            Err(CoreError::from(TICK_INDEX_OUT_OF_BOUNDS))
         ));
 
         let out_of_bounds_upper = sequence.tick(2817);
-        assert!(matches!(out_of_bounds_upper, Err(TICK_INDEX_OUT_OF_BOUNDS)));
+        assert!(matches!(out_of_bounds_upper, Err(e) if e == &CoreError::from(TICK_INDEX_OUT_OF_BOUNDS)));
 
         let invalid_tick_index = sequence.tick(1);
-        assert!(matches!(invalid_tick_index, Err(INVALID_TICK_INDEX)));
+        assert!(matches!(invalid_tick_index, Err(e) if e == &CoreError::from(INVALID_TICK_INDEX)));
 
         let invalid_negative_tick_index = sequence.tick(-1);
         assert!(matches!(
             invalid_negative_tick_index,
-            Err(INVALID_TICK_INDEX)
+            Err(CoreError::from(INVALID_TICK_INDEX))
         ));
     }
 
@@ -314,8 +314,8 @@ mod tests {
         let pair_2816 = sequence.next_initialized_tick(2816);
         assert_eq!(pair_2813, Ok((None, 2815)));
         assert_eq!(pair_2814, Ok((None, 2815)));
-        assert_eq!(pair_2815, Err(INVALID_TICK_ARRAY_SEQUENCE));
-        assert_eq!(pair_2816, Err(INVALID_TICK_ARRAY_SEQUENCE));
+        assert_eq!(pair_2815, Err(CoreError::from(INVALID_TICK_ARRAY_SEQUENCE)));
+        assert_eq!(pair_2816, Err(CoreError::from(INVALID_TICK_ARRAY_SEQUENCE)));
     }
 
     #[test]
@@ -414,8 +414,8 @@ mod tests {
         let pair_1410 = sequence.prev_initialized_tick(-1410);
         assert!(matches!(pair_1407, Ok((None, -1408))));
         assert!(matches!(pair_1408, Ok((None, -1408))));
-        assert!(matches!(pair_1409, Err(INVALID_TICK_ARRAY_SEQUENCE)));
-        assert!(matches!(pair_1410, Err(INVALID_TICK_ARRAY_SEQUENCE)));
+        assert!(matches!(pair_1409, Err(e) if e == &CoreError::from(INVALID_TICK_ARRAY_SEQUENCE)));
+        assert!(matches!(pair_1410, Err(e) if e == &CoreError::from(INVALID_TICK_ARRAY_SEQUENCE)));
     }
 
     #[test]

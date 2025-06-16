@@ -69,20 +69,20 @@ pub fn collect_fees_quote(
 
     let fee_owed_delta_a: U256 = <U256>::from(fee_growth_delta_a)
         .checked_mul(position.liquidity.into())
-        .ok_or(ARITHMETIC_OVERFLOW)?
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?
         >> 64;
 
     let fee_owed_delta_b: U256 = <U256>::from(fee_growth_delta_b)
         .checked_mul(position.liquidity.into())
-        .ok_or(ARITHMETIC_OVERFLOW)?
+        .ok_or(CoreError::from(ARITHMETIC_OVERFLOW))?
         >> 64;
 
     let fee_owed_delta_a: u64 = fee_owed_delta_a
         .try_into()
-        .map_err(|_| AMOUNT_EXCEEDS_MAX_U64)?;
+        .map_err(|_| CoreError::from(AMOUNT_EXCEEDS_MAX_U64))?;
     let fee_owed_delta_b: u64 = fee_owed_delta_b
         .try_into()
-        .map_err(|_| AMOUNT_EXCEEDS_MAX_U64)?;
+        .map_err(|_| CoreError::from(AMOUNT_EXCEEDS_MAX_U64))?;
 
     let withdrawable_fee_a = position.fee_owed_a + fee_owed_delta_a;
     let withdrawable_fee_b = position.fee_owed_b + fee_owed_delta_b;
