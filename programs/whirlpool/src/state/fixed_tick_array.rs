@@ -16,7 +16,7 @@ pub type FixedTickArray = TickArray;
 #[repr(C, packed)]
 pub struct TickArray {
     start_tick_index: i32,
-    ticks: [Tick; TICK_ARRAY_SIZE_USIZE],
+    pub ticks: [Tick; TICK_ARRAY_SIZE_USIZE],
     whirlpool: Pubkey,
 }
 

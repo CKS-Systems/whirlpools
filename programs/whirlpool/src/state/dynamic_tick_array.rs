@@ -321,6 +321,15 @@ impl DynamicTickArrayLoader {
     fn is_initialized_tick(tick_bitmap: &u128, tick_offset: isize) -> bool {
         (*tick_bitmap & (1 << tick_offset)) != 0
     }
+
+    pub fn tick_iter(&self) -> impl Iterator<Item = DynamicTick>  + '_ {
+        (0..TICK_ARRAY_SIZE).map(|tick_offset| {
+            let byte_offset = self.byte_offset(tick_offset as isize).unwrap();
+            let data = self.tick_data();
+            let mut tick_data = &data[byte_offset..byte_offset + DynamicTick::INITIALIZED_LEN];
+            DynamicTick::deserialize(&mut tick_data).unwrap()
+        })
+    }
 }
 
 #[cfg(test)]
